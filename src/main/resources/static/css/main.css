@@ -1,0 +1,247 @@
+:root {
+    /* ── Color Palette: Premium Healthcare Blue ── */
+    --primary: #4f46e5;          /* Indigo */
+    --primary-hover: #4338ca;
+    --primary-glow: rgba(79, 70, 229, 0.4);
+    --primary-light: rgba(79, 70, 229, 0.08);
+    
+    --secondary: #64748b;        /* Slate */
+    --background: #f8fafc;       /* Near-white blue */
+    --sidebar-bg: #1e293b;       /* Deep slate */
+    --sidebar-active: rgba(255, 255, 255, 0.05);
+
+    --card-bg: rgba(255, 255, 255, 0.85);
+    --card-border: rgba(226, 232, 240, 0.8);
+    
+    --text-main: #0f172a;        /* Navy */
+    --text-muted: #64748b;
+    --text-light: #94a3b8;
+
+    --success: #10b981;          /* Emerald */
+    --warning: #f59e0b;          /* Amber */
+    --danger: #ef4444;           /* Rose */
+
+    --white: #ffffff;
+    --border: #e2e8f0;
+
+    /* ── Aesthetics ── */
+    --radius-sm: 0.5rem;
+    --radius-md: 0.85rem;
+    --radius-lg: 1.25rem;
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    --shadow-lg: 0 12px 24px -8px rgba(15, 23, 42, 0.08);
+    
+    --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    --blur: blur(12px);
+}
+
+/* ── Base Styles ─────────────────────────────────────────── */
+body {
+    background-color: var(--background);
+    color: var(--text-main);
+    font-family: 'Outfit', 'Inter', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+}
+
+/* ── Layout: Premium SaaS Sidebar ─────────────────────────── */
+.sidebar {
+    height: 100vh;
+    width: 260px;
+    position: fixed;
+    top: 0; left: 0;
+    background-color: var(--sidebar-bg);
+    color: white;
+    z-index: 1000;
+    padding: 1.5rem 0;
+    box-shadow: 10px 0 30px rgba(0, 0, 0, 0.05);
+    transition: var(--transition);
+}
+
+.sidebar .brand {
+    padding: 0 1.5rem 2.5rem;
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: white;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.sidebar .brand i {
+    color: var(--primary);
+    filter: drop-shadow(0 0 8px var(--primary-glow));
+}
+
+.sidebar-nav {
+    list-style: none;
+    padding: 0;
+}
+
+.sidebar-nav .nav-item {
+    margin: 0.35rem 1rem;
+}
+
+.sidebar-nav .nav-link {
+    color: #94a3b8;
+    padding: 0.85rem 1.15rem;
+    border-radius: var(--radius-md);
+    transition: var(--transition);
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    text-decoration: none;
+}
+
+.sidebar-nav .nav-link:hover {
+    background-color: var(--sidebar-active);
+    color: white;
+}
+
+.sidebar-nav .nav-link.active {
+    background-color: var(--primary);
+    color: white;
+    box-shadow: 0 4px 12px var(--primary-glow);
+}
+
+.sidebar-nav .nav-link i {
+    width: 24px;
+    font-size: 1.1rem;
+    margin-right: 12px;
+    opacity: 0.7;
+}
+
+.sidebar-nav .nav-link.active i {
+    opacity: 1;
+}
+
+/* ── Main Content ─────────────────────────────────────────── */
+.main-content {
+    margin-left: 260px;
+    padding: 2.5rem;
+    min-height: 100vh;
+    animation: entranceFade 0.6s ease-out;
+}
+
+@keyframes entranceFade {
+    from { opacity: 0; transform: translateY(15px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Glassmorphism Components ──────────────────────────────── */
+.card-saas {
+    background: var(--card-bg);
+    backdrop-filter: var(--blur);
+    -webkit-backdrop-filter: var(--blur);
+    border: 1px solid var(--card-border);
+    border-radius: var(--radius-lg);
+    padding: 1.75rem;
+    box-shadow: var(--shadow-lg);
+    transition: var(--transition);
+}
+
+.card-saas:hover {
+    transform: translateY(-6px);
+    border-color: var(--primary);
+    box-shadow: 0 20px 40px -10px rgba(79, 70, 229, 0.12);
+}
+
+/* ── Premium Buttons ───────────────────────────────────────── */
+.btn-saas {
+    background: var(--primary);
+    color: white !important;
+    border-radius: var(--radius-md);
+    padding: 0.7rem 1.75rem;
+    font-weight: 600;
+    transition: var(--transition);
+    border: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    box-shadow: 0 4px 10px var(--primary-glow);
+}
+
+.btn-saas:hover {
+    background: var(--primary-hover);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px var(--primary-glow);
+}
+
+.btn-outline-saas {
+    background: transparent;
+    border: 2px solid var(--primary);
+    color: var(--primary) !important;
+    border-radius: var(--radius-md);
+    padding: 0.6rem 1.65rem;
+    font-weight: 600;
+}
+
+/* ── Status Indicators ────────────────────────────────────── */
+.badge-saas {
+    padding: 0.4rem 0.85rem;
+    border-radius: 20px;
+    font-weight: 700;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.badge-available { background: var(--primary-light); color: var(--primary); }
+.badge-reserved { background: rgba(245, 158, 11, 0.1); color: var(--warning); }
+.badge-inuse { background: rgba(239, 68, 68, 0.1); color: var(--danger); }
+
+/* ── Table Styling ────────────────────────────────────────── */
+.table {
+    --bs-table-bg: transparent;
+}
+
+.table thead th {
+    border-bottom: 2px solid var(--border);
+    font-size: 0.75rem;
+    letter-spacing: 0.1em;
+    padding: 1.25rem 0.75rem;
+}
+
+.table tbody td {
+    padding: 1.25rem 0.75rem;
+    vertical-align: middle;
+}
+
+/* ── Form Styling ─────────────────────────────────────────── */
+.form-control-saas {
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 0.85rem 1.25rem;
+    transition: var(--transition);
+}
+
+.form-control-saas:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 4px var(--primary-light);
+    outline: none;
+}
+
+/* ── Utilities ────────────────────────────────────────────── */
+.text-gradient {
+    background: linear-gradient(135deg, var(--primary), #818cf8);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.pulse-fast {
+    animation: pulse 1s infinite alternate;
+}
+
+@keyframes pulse {
+    from { opacity: 0.4; }
+    to { opacity: 1; }
+}
+
+/* ── Responsive ───────────────────────────────────────────── */
+@media (max-width: 991px) {
+    .main-content { margin-left: 0; padding: 5rem 1.5rem 2rem; }
+    .sidebar { transform: translateX(-100%); }
+    .sidebar.active { transform: translateX(0); }
+}
