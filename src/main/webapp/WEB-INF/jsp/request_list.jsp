@@ -76,6 +76,7 @@
                                 <th>Priority</th>
                                 <th>Status</th>
                                 <th>Requested At</th>
+                                <th class="text-end">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -103,11 +104,25 @@
                                         </span>
                                     </td>
                                     <td class="text-muted small">${req.requestedAt}</td>
+                                    <td class="text-end">
+                                        <div class="d-flex justify-content-end gap-2">
+                                            <c:if test="${isAdmin and (req.status == 'PENDING' or req.status == 'WAITING')}">
+                                                <form action="/requests/allocate/${req.id}" method="POST" class="m-0">
+                                                    <button type="submit" class="btn btn-sm btn-saas">Allocate</button>
+                                                </form>
+                                            </c:if>
+                                            <c:if test="${(isAdmin or currentHospitalId == req.requesterHospital.id) and (req.status == 'PENDING' or req.status == 'WAITING')}">
+                                                <form action="/requests/cancel/${req.id}" method="POST" class="m-0">
+                                                    <button type="submit" class="btn btn-sm btn-outline-danger">Cancel</button>
+                                                </form>
+                                            </c:if>
+                                        </div>
+                                    </td>
                                 </tr>
                             </c:forEach>
                             <c:if test="${empty requests}">
                                 <tr>
-                                    <td colspan="5" class="text-center py-5 text-muted">No requests found in the network.</td>
+                                    <td colspan="6" class="text-center py-5 text-muted">No requests found in the network.</td>
                                 </tr>
                             </c:if>
                         </tbody>

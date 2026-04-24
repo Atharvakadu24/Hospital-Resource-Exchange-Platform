@@ -8,7 +8,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.*;
-import java.util.concurrent.PriorityBlockingQueue;
 
 /**
  * Core Service for managing medical resource allocations between hospitals.
@@ -66,7 +65,10 @@ public class ResourceAllocationService {
         
         if (!allocated) {
             // Check for deadlock if we were to wait
-            List<Resource> busyResources = resourceRepository.findByTypeAndStatus(type, Resource.ResourceStatus.IN_USE);
+            List<Resource> busyResources = resourceRepository.findByTypeAndStatusIn(
+                    type,
+                    List.of(Resource.ResourceStatus.RESERVED, Resource.ResourceStatus.IN_USE)
+            );
             
             boolean potentialDeadlock = false;
             for (Resource r : busyResources) {
@@ -80,6 +82,12 @@ public class ResourceAllocationService {
                 request.setStatus(AllocationRequest.RequestStatus.REJECTED_DEADLOCK);
                 logAudit("DEADLOCK_PREVENTION_REJECT", "Request rejected to prevent circular dependency cycle", "System", requester, request);
             } else {
+                busyResources.stream()
+                        .map(Resource::getHospital)
+                        .filter(Objects::nonNull)
+                        .map(Hospital::getId)
+                        .filter(holdingHospitalId -> !holdingHospitalId.equals(requester.getId()))
+                        .forEach(holdingHospitalId -> deadlockDetectionService.addDependency(requester.getId(), holdingHospitalId));
                 request.setStatus(AllocationRequest.RequestStatus.WAITING);
                 logAudit("REQUEST_QUEUED", "Resource type " + type + " busy. Added to priority queue.", "System", requester, request);
             }
@@ -91,16 +99,17 @@ public class ResourceAllocationService {
     @Transactional
     public synchronized boolean attemptAllocation(AllocationRequest request) {
         // Strict Quota Check FIRST
-        long currentLoad = resourceRepository.findByHospitalId(request.getRequesterHospital().getId()).stream()
-                .filter(r -> r.getStatus() != Resource.ResourceStatus.AVAILABLE)
-                .count();
+        long currentLoad = getCurrentLoad(request.getRequesterHospital());
 
         if (currentLoad >= request.getRequesterHospital().getResourceQuota()) {
             logAudit("QUOTA_EXCEEDED", "Hospital limit reached: " + currentLoad, "System", request.getRequesterHospital(), request);
             return false;
         }
 
-        List<Resource> availableResources = resourceRepository.findByTypeAndStatus(request.getResourceType(), Resource.ResourceStatus.AVAILABLE);
+        List<Resource> availableResources = resourceRepository.findByTypeAndStatus(request.getResourceType(), Resource.ResourceStatus.AVAILABLE)
+                .stream()
+                .filter(resource -> !resource.getHospital().getId().equals(request.getRequesterHospital().getId()))
+                .toList();
         
         if (availableResources.isEmpty()) return false;
 
@@ -168,6 +177,7 @@ public class ResourceAllocationService {
                                request.getStatus() == AllocationRequest.RequestStatus.WAITING)) {
             request.setStatus(AllocationRequest.RequestStatus.CANCELLED);
             requestRepository.save(request);
+            deadlockDetectionService.clearAllDependencies(request.getRequesterHospital().getId());
             logAudit("REQUEST_CANCELLED", "Request cancelled by user", "User", request.getRequesterHospital(), request);
         }
     }
@@ -199,16 +209,31 @@ public class ResourceAllocationService {
         return requestRepository.findByStatusOrderByPriorityDescRequestedAtAsc(AllocationRequest.RequestStatus.WAITING);
     }
 
+    @Transactional
+    public boolean allocateRequest(Long requestId) {
+        AllocationRequest request = getRequestById(requestId);
+        if (request == null) {
+            return false;
+        }
+        if (request.getStatus() != AllocationRequest.RequestStatus.PENDING
+                && request.getStatus() != AllocationRequest.RequestStatus.WAITING) {
+            return false;
+        }
+        return attemptAllocation(request);
+    }
+
     public Map<Long, Set<Long>> getActiveDependencies() {
         return deadlockDetectionService.getWaitForGraph(); // Need to expose this in deadlock service
     }
 
     public int getQuotaLoadPercent(Hospital hospital) {
-        long currentLoad = resourceRepository.findByHospitalId(hospital.getId()).stream()
-                .filter(r -> r.getStatus() != Resource.ResourceStatus.AVAILABLE)
-                .count();
+        long currentLoad = getCurrentLoad(hospital);
         int quota = hospital.getResourceQuota();
         if (quota == 0) return 0;
         return (int) ((currentLoad * 100) / quota);
+    }
+
+    private long getCurrentLoad(Hospital hospital) {
+        return bookingRepository.countByRequestRequesterHospitalIdAndReleasedFalse(hospital.getId());
     }
 }

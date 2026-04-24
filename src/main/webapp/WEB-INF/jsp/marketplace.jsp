@@ -1,5 +1,6 @@
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
 <%@ taglib prefix="c" uri="jakarta.tags.core" %>
+<%@ taglib prefix="fn" uri="jakarta.tags.functions" %>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -91,9 +92,19 @@
                                     <i class="fa-solid fa-location-dot me-1"></i> ${res.hospital.location}
                                 </div>
                                 <c:choose>
-                                    <c:when test="${res.status == 'AVAILABLE'}">
+                                    <c:when test="${isHospitalAdmin and currentHospitalId != null and currentHospitalId != res.hospital.id and res.status == 'AVAILABLE'}">
                                         <a href="/requests/new?resourceId=${res.id}" class="btn btn-sm btn-saas">
                                             Request
+                                        </a>
+                                    </c:when>
+                                    <c:when test="${isHospitalAdmin and currentHospitalId == res.hospital.id}">
+                                        <button class="btn btn-sm btn-link text-muted p-0 text-decoration-none" disabled>
+                                            Your Resource
+                                        </button>
+                                    </c:when>
+                                    <c:when test="${isAdmin}">
+                                        <a href="/resources/${res.id}" class="btn btn-sm btn-outline-light">
+                                            View
                                         </a>
                                     </c:when>
                                     <c:otherwise>

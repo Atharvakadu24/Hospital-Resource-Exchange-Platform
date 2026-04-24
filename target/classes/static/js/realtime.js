@@ -28,8 +28,19 @@ const RealTimeMonitor = (function() {
         switch(data.type) {
             case 'RESOURCE_UPDATE':
                 showToast('Inventory Update', `Resource #${data.resourceId} is now ${data.status}`, 'info');
-                // Trigger soft refresh of marketplace if on that page
-                if (window.location.pathname.includes('marketplace')) location.reload();
+                
+                // PERFORMANCE: Targeted DOM update instead of location.reload()
+                const badge = document.getElementById(`resource-badge-${data.resourceId}`);
+                const card = document.getElementById(`resource-card-${data.resourceId}`);
+                
+                if (badge) {
+                    badge.innerText = data.status;
+                    badge.className = `badge-saas badge-${data.status.toLowerCase().replace('_', '')}`;
+                    if (card) {
+                        card.classList.add('pulse-fast');
+                        setTimeout(() => card.classList.remove('pulse-fast'), 2000);
+                    }
+                }
                 break;
             case 'NEW_REQUEST':
                 showToast('Priority Request', `${data.hospital} requested ${data.resourceType}`, 'warning');
@@ -90,8 +101,25 @@ const RealTimeMonitor = (function() {
         // location.reload(); 
     }
 
+    function initGlobalUI() {
+        // Form submit loading state
+        document.querySelectorAll('form').forEach(form => {
+            form.addEventListener('submit', function() {
+                const loader = document.getElementById('global-loader');
+                if (loader) {
+                    loader.classList.add('active');
+                    // Safety timeout to clear loader if navigation fails
+                    setTimeout(() => loader.classList.remove('active'), 5000);
+                }
+            });
+        });
+    }
+
     return {
-        init: connect
+        init: () => {
+            connect();
+            initGlobalUI();
+        }
     };
 })();
 

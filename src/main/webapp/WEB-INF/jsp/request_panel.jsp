@@ -14,8 +14,6 @@
 </head>
 <body>
 
-<body>
-
     <!-- Sidebar Toggle (Mobile) -->
     <div class="sidebar-toggle" onclick="document.querySelector('.sidebar').classList.toggle('active')">
         <i class="fa-solid fa-bars"></i>
@@ -95,6 +93,33 @@
                                     </div>
                                 </div>
 
+                                <c:if test="${isAdmin}">
+                                    <div class="col-12">
+                                        <label class="form-label fw-bold small text-muted">REQUESTING HOSPITAL</label>
+                                        <select name="requesterHospitalId" class="form-control-saas" required>
+                                            <option value="">Select hospital...</option>
+                                            <c:forEach items="${requesterHospitals}" var="hospital">
+                                                <option value="${hospital.id}" ${requesterHospital != null && requesterHospital.id == hospital.id ? 'selected' : ''}>
+                                                    ${hospital.name} - ${hospital.location}
+                                                </option>
+                                            </c:forEach>
+                                        </select>
+                                        <div class="form-text text-muted small mt-2">
+                                            Create this allocation request on behalf of a hospital in the network.
+                                        </div>
+                                    </div>
+                                </c:if>
+
+                                <c:if test="${not isAdmin && requesterHospital != null}">
+                                    <div class="col-12">
+                                        <label class="form-label fw-bold small text-muted">REQUESTING HOSPITAL</label>
+                                        <div class="p-3 rounded-4 border bg-light-subtle">
+                                            <div class="fw-bold">${requesterHospital.name}</div>
+                                            <div class="small text-muted">${requesterHospital.location}</div>
+                                        </div>
+                                    </div>
+                                </c:if>
+
                                 <div class="col-md-6">
                                     <label class="form-label fw-bold small text-muted">REQUEST PRIORITY</label>
                                     <select name="priority" class="form-control-saas">
@@ -150,7 +175,7 @@
                         
                         <div class="mb-3">
                             <div class="d-flex justify-content-between small fw-bold mb-1">
-                                <span>Quota Load</span>
+                                <span><c:out value="${isAdmin ? 'Selected Hospital Quota Load' : 'Quota Load'}"/></span>
                                 <span>${currentQuotaLoad}%</span>
                             </div>
                             <div class="progress" style="height: 6px;">

@@ -1,9 +1,7 @@
 package com.hospital.exchange.controller;
 
-import com.hospital.exchange.entity.AllocationRequest;
 import com.hospital.exchange.entity.Hospital;
 import com.hospital.exchange.entity.Resource;
-import com.hospital.exchange.service.HospitalService;
 import com.hospital.exchange.service.ResourceService;
 import com.hospital.exchange.service.ResourceAllocationService;
 import com.hospital.exchange.util.SecurityUtils;
@@ -18,10 +16,13 @@ import org.springframework.web.bind.annotation.*;
 public class HospitalAdminController {
 
     private final ResourceService resourceService;
+    private final ResourceAllocationService allocationService;
     private final SecurityUtils securityUtils;
 
-    public HospitalAdminController(ResourceService resourceService, SecurityUtils securityUtils) {
+    public HospitalAdminController(ResourceService resourceService, ResourceAllocationService allocationService,
+                                   SecurityUtils securityUtils) {
         this.resourceService = resourceService;
+        this.allocationService = allocationService;
         this.securityUtils = securityUtils;
     }
 
@@ -32,6 +33,12 @@ public class HospitalAdminController {
 
         model.addAttribute("hospital", currentHospital);
         model.addAttribute("resources", resourceService.getResourcesByHospital(currentHospital.getId()));
+        model.addAttribute("user", securityUtils.getCurrentUser());
+        model.addAttribute("currentQuotaLoad", allocationService.getQuotaLoadPercent(currentHospital));
+        model.addAttribute("pendingRequests", allocationService.getRequestsByHospital(currentHospital.getId()).stream()
+                .filter(req -> req.getStatus() == com.hospital.exchange.entity.AllocationRequest.RequestStatus.WAITING
+                        || req.getStatus() == com.hospital.exchange.entity.AllocationRequest.RequestStatus.PENDING)
+                .count());
         return "hospital_admin_dashboard";
     }
 

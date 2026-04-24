@@ -8,17 +8,20 @@ public class DatabaseInitializer {
     private static final String DB_URL = "jdbc:mysql://localhost:3306/";
     private static final String DB_NAME = "hospital_exchange";
     private static final String USER = "root";
-    private static final String PASS = "root";
+    private static final String PASS = "Psgm@2007";
+    private static final String CONNECTION_PARAMS = "?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=UTC";
 
     public static void main(String[] args) {
         try {
             // 1. Connect to MySQL server
-            try (Connection conn = DriverManager.getConnection(DB_URL + "?createDatabaseIfNotExist=true", USER, PASS)) {
-                System.out.println("Connected to MySQL server.");
+            try (Connection conn = DriverManager.getConnection(DB_URL + CONNECTION_PARAMS, USER, PASS);
+                 Statement stmt = conn.createStatement()) {
+                stmt.executeUpdate("CREATE DATABASE IF NOT EXISTS " + DB_NAME);
+                System.out.println("Connected to MySQL server and ensured database exists.");
             }
 
             // 2. Connect to the specific database
-            try (Connection conn = DriverManager.getConnection(DB_URL + DB_NAME, USER, PASS)) {
+            try (Connection conn = DriverManager.getConnection(DB_URL + DB_NAME + CONNECTION_PARAMS, USER, PASS)) {
                 System.out.println("Switched to database: " + DB_NAME);
 
                 // 3. Create Tables

@@ -86,7 +86,7 @@
 
             <c:if test="${resource.status == 'AVAILABLE'}">
                 <div style="margin-top: 3rem;">
-                    <a href="/hospital/${resource.hospital.id}" style="color: var(--primary); font-weight: 600; text-decoration: none;">Request Allocation &rarr;</a>
+                    <a href="/requests/new?resourceId=${resource.id}" style="color: var(--primary); font-weight: 600; text-decoration: none;">Request Allocation &rarr;</a>
                 </div>
             </c:if>
         </div>

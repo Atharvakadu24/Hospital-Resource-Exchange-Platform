@@ -5,693 +5,796 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hospital Map — Exchange.Med</title>
-    <meta name="description" content="Live hospital map with real-time resource tracking, routing and best-hospital suggestion for Pune region.">
+    <title>Live Map - Exchange.Med</title>
+    <meta name="description" content="Leaflet-powered live hospital network map with resource-aware routing and search.">
 
-    <!-- Fonts & Icons -->
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" rel="stylesheet">
-
-    <!-- Google Maps JS API + Marker Clusterer -->
-    <script src="https://maps.googleapis.com/maps/api/js?key=${googleMapsApiKey}&libraries=geometry,places"></script>
-    <script src="https://unpkg.com/@googlemaps/markerclusterer/dist/index.min.js"></script>
-
-    <!-- App CSS -->
+    <link href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" rel="stylesheet">
     <link href="/css/main.css" rel="stylesheet">
 
     <style>
-        /* ── Layout ─────────────────────────────────────────────── */
-        * { box-sizing: border-box; margin: 0; padding: 0; }
+        * { box-sizing: border-box; }
 
         body {
+            margin: 0;
+            min-height: 100vh;
             font-family: 'Outfit', sans-serif;
-            background: #0f172a;
-            color: #f1f5f9;
-            display: flex;
+            background:
+                radial-gradient(circle at top left, rgba(15, 118, 110, 0.16), transparent 32%),
+                radial-gradient(circle at bottom right, rgba(99, 102, 241, 0.15), transparent 30%),
+                #0b1220;
+            color: #e2e8f0;
+            overflow: hidden;
+        }
+
+        .map-page {
+            display: grid;
+            grid-template-columns: 300px minmax(320px, 360px) 1fr;
+            grid-template-rows: auto 1fr;
+            min-height: 100vh;
             height: 100vh;
             overflow: hidden;
         }
 
-        /* ── App Sidebar (shared) ─────────────────────────────────── */
         .sidebar {
-            width: 240px;
-            min-width: 240px;
-            background: #0f172a;
-            border-right: 1px solid rgba(255,255,255,0.07);
+            grid-column: 1;
+            grid-row: 1 / span 2;
+            position: relative;
+            width: auto;
+            height: 100vh;
+            background: rgba(10, 16, 31, 0.96);
+            border-right: 1px solid rgba(148, 163, 184, 0.12);
+            box-shadow: none;
             display: flex;
             flex-direction: column;
-            z-index: 900;
+            z-index: 30;
         }
 
         .sidebar .brand {
-            padding: 1.5rem 1.5rem 1rem;
-            font-size: 1.3rem;
-            font-weight: 800;
+            padding: 1.6rem 1.5rem 1.4rem;
             color: #6366f1;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            border-bottom: 1px solid rgba(255,255,255,0.06);
+            border-bottom: 1px solid rgba(148, 163, 184, 0.08);
         }
 
-        .sidebar-nav { list-style: none; padding: 1rem 0; flex: 1; }
+        .sidebar-nav {
+            list-style: none;
+            margin: 0;
+            padding: 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.45rem;
+        }
 
-        .sidebar-nav li { margin: .25rem .75rem; }
+        .sidebar-nav li {
+            margin: 0;
+            padding: 0;
+        }
 
-        .sidebar-nav a {
+        .sidebar-nav li a {
             display: flex;
             align-items: center;
-            gap: 10px;
-            color: #94a3b8;
-            padding: .7rem 1rem;
-            border-radius: .5rem;
+            gap: 0.8rem;
+            width: 100%;
+            padding: 0.92rem 1rem;
+            border-radius: 16px;
+            color: #a5b4fc;
             text-decoration: none;
-            font-weight: 500;
-            font-size: .9rem;
-            transition: all .2s;
+            font-weight: 600;
+            transition: background 0.18s ease, color 0.18s ease, transform 0.18s ease;
         }
 
-        .sidebar-nav a:hover,
-        .sidebar-nav a.active {
-            background: rgba(99,102,241,.15);
-            color: #818cf8;
+        .sidebar-nav li a:hover,
+        .sidebar-nav li a.active {
+            background: rgba(99, 102, 241, 0.18);
+            color: #eef2ff;
+            transform: translateX(2px);
         }
 
-        .sidebar-nav a i { width: 18px; }
+        .sidebar-nav li a i {
+            width: 20px;
+            text-align: center;
+        }
 
         .sidebar-bottom {
-            padding: 1rem 1rem 1.5rem;
-            border-top: 1px solid rgba(255,255,255,0.06);
+            margin-top: auto;
+            padding: 1rem;
         }
 
         .sign-out-btn {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            color: #f87171;
-            background: rgba(239,68,68,.08);
-            border: none;
-            border-radius: .5rem;
-            padding: .6rem 1rem;
-            font-size: .875rem;
-            cursor: pointer;
             width: 100%;
+            border: 1px solid rgba(248, 113, 113, 0.12);
+            border-radius: 16px;
+            background: rgba(127, 29, 29, 0.18);
+            color: #fca5a5;
+            padding: 0.95rem 1rem;
             font-family: inherit;
-            transition: background .2s;
+            font-size: 0.95rem;
+            font-weight: 700;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.65rem;
+            cursor: pointer;
         }
 
-        .sign-out-btn:hover { background: rgba(239,68,68,.18); }
-
-        /* ── Map Wrapper ──────────────────────────────────────────── */
-        .map-wrapper {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-            position: relative;
-        }
-
-        /* ── Top Bar ──────────────────────────────────────────────── */
         .map-topbar {
+            grid-column: 2 / 4;
             display: flex;
             align-items: center;
-            gap: 1rem;
-            padding: .875rem 1.5rem;
-            background: #111827;
-            border-bottom: 1px solid rgba(255,255,255,0.07);
-            z-index: 50;
+            gap: 0.9rem;
             flex-wrap: wrap;
+            padding: 1rem 1.25rem;
+            background: rgba(11, 18, 32, 0.88);
+            border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+            backdrop-filter: blur(16px);
+            position: sticky;
+            top: 0;
+            z-index: 20;
         }
 
         .map-topbar h2 {
-            font-size: 1.1rem;
+            margin: 0;
+            font-size: 1.05rem;
             font-weight: 700;
-            color: #f1f5f9;
-            white-space: nowrap;
+            color: #f8fafc;
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 0.6rem;
         }
 
         .live-indicator {
-            display: flex;
+            display: inline-flex;
             align-items: center;
-            gap: 5px;
-            font-size: .75rem;
+            gap: 0.45rem;
             color: #10b981;
-            font-weight: 600;
+            font-size: 0.8rem;
+            font-weight: 700;
+            letter-spacing: 0.06em;
         }
 
         #liveDot {
-            width: 8px; height: 8px;
-            background: #10b981;
+            width: 10px;
+            height: 10px;
             border-radius: 50%;
-            animation: pulse 2s infinite;
+            background: #10b981;
+            box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.45);
+            animation: livePulse 2s infinite;
         }
 
-        @keyframes pulse {
-            0%,100% { box-shadow: 0 0 0 0 rgba(16,185,129,.6); }
-            50% { box-shadow: 0 0 0 6px rgba(16,185,129,0); }
+        @keyframes livePulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.45); }
+            50% { box-shadow: 0 0 0 10px rgba(16, 185, 129, 0); }
         }
 
-        .pulse-fast { animation: pulse .3s ease-in-out 2 !important; }
+        .pulse-fast { animation: none !important; transform: scale(1.2); }
 
         .search-box {
-            flex: 1;
-            max-width: 260px;
             position: relative;
+            min-width: 260px;
+            flex: 1 1 280px;
+            max-width: 420px;
         }
-
-        .search-box input {
-            width: 100%;
-            background: #1e293b;
-            border: 1px solid rgba(255,255,255,.1);
-            border-radius: .625rem;
-            color: #f1f5f9;
-            padding: .5rem 1rem .5rem 2.25rem;
-            font-size: .875rem;
-            font-family: inherit;
-            outline: none;
-            transition: border .2s;
-        }
-
-        .search-box input:focus { border-color: #6366f1; }
 
         .search-box i {
             position: absolute;
-            left: .75rem; top: 50%;
+            left: 0.9rem;
+            top: 50%;
             transform: translateY(-50%);
-            color: #64748b; font-size: .8rem;
+            color: #64748b;
+        }
+
+        .search-box input,
+        .top-select {
+            width: 100%;
+            background: rgba(30, 41, 59, 0.9);
+            border: 1px solid rgba(148, 163, 184, 0.18);
+            border-radius: 16px;
+            color: #f8fafc;
+            min-height: 48px;
+            font-family: inherit;
+        }
+
+        .search-box input {
+            padding: 0.85rem 1rem 0.85rem 2.8rem;
         }
 
         .top-select {
-            background: #1e293b;
-            border: 1px solid rgba(255,255,255,.1);
-            border-radius: .625rem;
-            color: #f1f5f9;
-            padding: .5rem .9rem;
-            font-size: .875rem;
-            font-family: inherit;
-            cursor: pointer;
-            outline: none;
+            padding: 0.85rem 1rem;
+            min-width: 190px;
+        }
+
+        .map-topbar .top-select {
+            width: auto;
+            flex: 0 0 210px;
         }
 
         .top-btn {
-            background: #6366f1;
-            color: #fff;
-            border: none;
-            border-radius: .625rem;
-            padding: .5rem 1.1rem;
-            font-size: .875rem;
-            font-weight: 600;
-            cursor: pointer;
+            min-height: 48px;
+            border-radius: 16px;
+            padding: 0.85rem 1.2rem;
+            border: 1px solid transparent;
+            background: linear-gradient(135deg, #6366f1, #4f46e5);
+            color: white;
             font-family: inherit;
-            transition: background .2s;
-            white-space: nowrap;
+            font-weight: 700;
+            cursor: pointer;
+            transition: transform 0.18s ease, opacity 0.18s ease;
         }
 
-        .top-btn:hover { background: #4f46e5; }
+        .top-btn:hover { transform: translateY(-1px); }
 
         .top-btn-outline {
-            background: transparent;
-            border: 1px solid rgba(255,255,255,.2);
-            color: #cbd5e1;
+            background: rgba(15, 23, 42, 0.45);
+            border-color: rgba(148, 163, 184, 0.18);
+            color: #e2e8f0;
         }
-
-        .top-btn-outline:hover { background: rgba(255,255,255,.07); }
 
         .toggle-label {
-            display: flex;
+            display: inline-flex;
             align-items: center;
-            gap: 6px;
-            font-size: .8rem;
-            color: #94a3b8;
-            cursor: pointer;
-            white-space: nowrap;
+            gap: 0.55rem;
+            color: #cbd5e1;
+            font-size: 0.9rem;
+            font-weight: 600;
         }
 
-        /* ── Main Area ─────────────────────────────────────────────── */
-        .map-body {
-            flex: 1;
-            display: flex;
-            overflow: hidden;
+        .toggle-label input {
+            width: 18px;
+            height: 18px;
         }
 
-        /* ── Left Panel ───────────────────────────────────────────── */
         .map-left-panel {
-            width: 300px;
-            min-width: 300px;
-            background: #111827;
-            border-right: 1px solid rgba(255,255,255,.07);
+            grid-column: 2 / 3;
             display: flex;
             flex-direction: column;
+            min-height: 0;
+            height: calc(100vh - 81px);
+            background: rgba(15, 23, 42, 0.9);
+            border-right: 1px solid rgba(148, 163, 184, 0.1);
             overflow: hidden;
         }
 
         .panel-section {
-            padding: 1rem 1rem .75rem;
-            border-bottom: 1px solid rgba(255,255,255,.06);
+            padding: 1rem 1rem 0.9rem;
+            border-bottom: 1px solid rgba(148, 163, 184, 0.08);
         }
 
         .panel-section h4 {
-            font-size: .8rem;
+            margin: 0 0 0.8rem;
+            color: #94a3b8;
+            font-size: 0.76rem;
+            font-weight: 800;
+            letter-spacing: 0.08em;
             text-transform: uppercase;
-            letter-spacing: .07em;
-            color: #64748b;
-            font-weight: 700;
-            margin-bottom: .75rem;
         }
 
-        /* Best Hospital */
+        .best-hospital-card,
+        .route-result,
+        .map-legend {
+            background: rgba(15, 23, 42, 0.78);
+            border: 1px solid rgba(148, 163, 184, 0.12);
+            border-radius: 18px;
+        }
+
         .best-hospital-card {
             display: flex;
             align-items: center;
-            gap: .75rem;
-            background: rgba(99,102,241,.1);
-            border: 1px solid rgba(99,102,241,.3);
-            border-radius: .75rem;
-            padding: .875rem;
+            justify-content: space-between;
+            gap: 0.9rem;
+            padding: 1rem;
         }
-
-        .best-hospital-icon { font-size: 1.5rem; }
 
         .best-hospital-name {
+            font-size: 0.95rem;
             font-weight: 700;
-            font-size: .9rem;
-            color: #f1f5f9;
+            color: #f8fafc;
         }
 
-        .best-hospital-meta { font-size: .75rem; color: #94a3b8; margin: .2rem 0; }
+        .best-hospital-meta {
+            margin-top: 0.2rem;
+            color: #94a3b8;
+            font-size: 0.78rem;
+        }
 
         .best-hospital-route {
-            margin-left: auto;
-            background: #6366f1;
-            color: #fff;
             border: none;
-            border-radius: .5rem;
-            padding: .4rem .8rem;
-            font-size: .8rem;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #0f766e, #14b8a6);
+            color: white;
+            font-weight: 700;
+            font-family: inherit;
+            padding: 0.75rem 0.95rem;
             cursor: pointer;
-            font-family: inherit;
-            font-weight: 600;
-            white-space: nowrap;
         }
 
-        .best-hospital-empty { color: #64748b; font-size: .85rem; text-align: center; padding: .5rem 0; }
+        .best-hospital-empty,
+        .panel-empty {
+            color: #94a3b8;
+            font-size: 0.88rem;
+            text-align: center;
+            padding: 1.1rem 0.6rem;
+        }
 
-        /* Route info */
+        .route-selects {
+            display: grid;
+            gap: 0.7rem;
+        }
+
         .route-result {
+            margin-top: 0.8rem;
+            padding: 0.9rem 1rem;
             display: flex;
-            gap: .75rem;
+            gap: 0.65rem;
             flex-wrap: wrap;
-            background: rgba(16,185,129,.1);
-            border: 1px solid rgba(16,185,129,.2);
-            border-radius: .625rem;
-            padding: .625rem .875rem;
-            font-size: .8rem;
             color: #d1fae5;
+            font-size: 0.82rem;
         }
 
-        .route-selects { display: flex; flex-direction: column; gap: .5rem; }
-
-        .route-selects select {
-            background: #1e293b;
-            border: 1px solid rgba(255,255,255,.1);
-            border-radius: .5rem;
-            color: #f1f5f9;
-            padding: .5rem .75rem;
-            font-size: .8rem;
-            font-family: inherit;
-            outline: none;
-        }
-
-        /* Hospital List */
         .panel-list {
             flex: 1;
             overflow-y: auto;
-            padding: .5rem;
+            padding: 0.8rem;
+            display: grid;
+            gap: 0.75rem;
+            align-content: start;
         }
 
-        .panel-list::-webkit-scrollbar { width: 4px; }
-        .panel-list::-webkit-scrollbar-thumb { background: #334155; border-radius: 2px; }
-
-        .hosp-list-item {
-            border-radius: .625rem;
-            padding: .75rem;
-            margin-bottom: .4rem;
+        .hospital-list-item {
+            width: 100%;
+            text-align: left;
+            border: 1px solid rgba(148, 163, 184, 0.1);
+            background: rgba(15, 23, 42, 0.72);
+            border-radius: 18px;
+            padding: 1rem;
+            color: #e2e8f0;
             cursor: pointer;
-            border-left: 3px solid transparent;
-            transition: background .15s;
+            transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease;
         }
 
-        .hosp-list-item:hover { background: rgba(255,255,255,.04); }
+        .hospital-list-item:hover {
+            transform: translateY(-1px);
+            border-color: rgba(99, 102, 241, 0.45);
+            background: rgba(30, 41, 59, 0.88);
+        }
 
-        .status-border-available { border-left-color: #10b981; }
-        .status-border-limited   { border-left-color: #f59e0b; }
-        .status-border-critical  { border-left-color: #ef4444; }
+        .hospital-list-item.status-available { box-shadow: inset 3px 0 0 #10b981; }
+        .hospital-list-item.status-limited { box-shadow: inset 3px 0 0 #f59e0b; }
+        .hospital-list-item.status-critical { box-shadow: inset 3px 0 0 #ef4444; }
 
-        .hosp-list-name { font-weight: 600; font-size: .875rem; color: #f1f5f9; }
-        .hosp-list-loc  { font-size: .75rem; color: #64748b; margin: .15rem 0 .4rem; }
-
-        .hosp-list-resources {
+        .hospital-list-item__header {
             display: flex;
-            gap: .6rem;
-            font-size: .75rem;
-            color: #94a3b8;
-            margin-bottom: .4rem;
+            justify-content: space-between;
+            gap: 0.75rem;
+            align-items: center;
         }
 
-        .hosp-list-badge {
-            display: inline-block;
-            padding: .15rem .5rem;
-            border-radius: 9999px;
-            font-size: .65rem;
+        .hospital-list-item__name {
             font-weight: 700;
-            text-transform: uppercase;
+            font-size: 0.95rem;
         }
 
-        .badge-available { background: rgba(16,185,129,.15); color: #10b981; }
-        .badge-limited   { background: rgba(245,158,11,.15); color: #f59e0b; }
-        .badge-critical  { background: rgba(239,68,68,.15); color: #ef4444; }
+        .hospital-list-item__badge {
+            padding: 0.25rem 0.55rem;
+            border-radius: 999px;
+            font-size: 0.67rem;
+            font-weight: 800;
+            background: rgba(99, 102, 241, 0.18);
+            color: #c7d2fe;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+        }
 
-        /* ── Map Container ────────────────────────────────────────── */
-        .map-container { flex: 1; position: relative; }
+        .hospital-list-item__location {
+            margin-top: 0.35rem;
+            color: #94a3b8;
+            font-size: 0.8rem;
+        }
 
-        #hospitalMap { width: 100%; height: 100%; }
+        .hospital-list-item__stats {
+            margin-top: 0.8rem;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            color: #cbd5e1;
+            font-size: 0.76rem;
+        }
 
-        /* ── Legend ───────────────────────────────────────────────── */
+        .hospital-list-item__stats span {
+            background: rgba(51, 65, 85, 0.72);
+            border-radius: 999px;
+            padding: 0.3rem 0.55rem;
+        }
+
+        .map-container {
+            grid-column: 3 / 4;
+            position: relative;
+            min-width: 0;
+            min-height: 0;
+            height: calc(100vh - 81px);
+            background: rgba(15, 23, 42, 0.75);
+        }
+
+        #hospitalMap {
+            width: 100%;
+            height: 100%;
+        }
+
         .map-legend {
             position: absolute;
-            bottom: 2rem;
             left: 1rem;
-            background: rgba(17,24,39,.92);
-            backdrop-filter: blur(8px);
-            border: 1px solid rgba(255,255,255,.1);
-            border-radius: .75rem;
-            padding: .875rem 1rem;
+            bottom: 1rem;
             z-index: 500;
-            min-width: 170px;
+            padding: 1rem;
+            min-width: 180px;
+            box-shadow: 0 18px 35px rgba(2, 6, 23, 0.3);
         }
 
         .map-legend h5 {
-            font-size: .7rem;
+            margin: 0 0 0.8rem;
+            color: #94a3b8;
+            font-size: 0.76rem;
+            font-weight: 800;
+            letter-spacing: 0.08em;
             text-transform: uppercase;
-            letter-spacing: .08em;
-            color: #64748b;
-            margin-bottom: .6rem;
         }
 
         .legend-item {
             display: flex;
             align-items: center;
-            gap: .5rem;
-            font-size: .8rem;
-            color: #cbd5e1;
-            margin-bottom: .35rem;
+            gap: 0.55rem;
+            color: #e2e8f0;
+            font-size: 0.82rem;
+            margin-bottom: 0.45rem;
         }
 
         .legend-dot {
-            width: 12px; height: 12px;
+            width: 12px;
+            height: 12px;
             border-radius: 50%;
-            border: 2px solid rgba(255,255,255,.4);
+            border: 2px solid rgba(255, 255, 255, 0.4);
         }
 
         .legend-line {
-            width: 20px; height: 3px;
-            border-radius: 2px;
+            width: 20px;
+            height: 3px;
+            border-radius: 999px;
         }
 
-        /* ── Popup Styling ────────────────────────────────────────── */
-        .map-popup { min-width: 260px; font-family: 'Outfit', sans-serif; }
+        .loading-overlay {
+            position: absolute;
+            inset: 0;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            gap: 1rem;
+            background: rgba(11, 18, 32, 0.6);
+            z-index: 700;
+            backdrop-filter: blur(8px);
+        }
 
-        .best-badge {
-            background: rgba(99,102,241,.2);
-            color: #818cf8;
-            font-size: .7rem;
+        .loading-overlay.active { display: flex; }
+
+        .spinner {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            border: 4px solid rgba(148, 163, 184, 0.25);
+            border-top-color: #6366f1;
+            animation: spin 0.9s linear infinite;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .loading-text {
+            color: #e2e8f0;
             font-weight: 700;
-            text-transform: uppercase;
-            padding: .2rem .6rem;
-            border-radius: 9999px;
-            margin-bottom: .5rem;
-            display: inline-block;
         }
 
-        .popup-title {
+        .sidebar-toggle { display: none; }
+
+        .hospital-marker-wrapper {
+            background: transparent;
+            border: none;
+        }
+
+        .hospital-marker {
+            border-radius: 50%;
+            background: var(--marker-color);
+            border: 3px solid rgba(255, 255, 255, 0.92);
+            box-shadow: 0 0 0 3px rgba(15, 23, 42, 0.25);
+        }
+
+        .hospital-marker.best {
+            box-shadow: 0 0 0 4px rgba(20, 184, 166, 0.24), 0 0 18px rgba(20, 184, 166, 0.45);
+        }
+
+        .hospital-popup-shell .leaflet-popup-content-wrapper,
+        .hospital-popup-shell .leaflet-popup-tip {
+            background: #f8fafc;
+            color: #0f172a;
+        }
+
+        .hospital-popup {
+            min-width: 240px;
+            font-family: 'Outfit', sans-serif;
+        }
+
+        .hospital-popup__title {
             font-size: 1rem;
-            font-weight: 700;
-            color: #1e293b;
-            margin-bottom: .25rem;
+            font-weight: 800;
         }
 
-        .popup-location { font-size: .75rem; color: #64748b; margin-bottom: .25rem; }
+        .hospital-popup__meta {
+            margin-top: 0.2rem;
+            color: #64748b;
+            font-size: 0.8rem;
+        }
 
-        .popup-status { font-size: .8rem; font-weight: 600; margin-bottom: .75rem; }
+        .hospital-popup__status {
+            margin-top: 0.5rem;
+            font-size: 0.78rem;
+            font-weight: 800;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+        }
 
-        .popup-resources { border-top: 1px solid #e2e8f0; padding-top: .625rem; margin-bottom: .75rem; }
+        .hospital-popup__grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 0.5rem;
+            margin-top: 0.85rem;
+        }
 
-        .res-row {
+        .hospital-popup__grid div {
+            background: #e2e8f0;
+            border-radius: 12px;
+            padding: 0.65rem 0.7rem;
+        }
+
+        .hospital-popup__grid span {
+            display: block;
+            color: #64748b;
+            font-size: 0.72rem;
+        }
+
+        .hospital-popup__grid strong {
+            display: block;
+            margin-top: 0.2rem;
+            font-size: 0.86rem;
+        }
+
+        .hospital-popup__actions {
             display: flex;
-            justify-content: space-between;
-            font-size: .8rem;
-            padding: .25rem 0;
-            color: #334155;
+            gap: 0.55rem;
+            margin-top: 0.9rem;
         }
-
-        .popup-actions { display: flex; gap: .5rem; flex-wrap: wrap; }
 
         .popup-btn {
             flex: 1;
-            background: #6366f1;
-            color: #fff;
+            border-radius: 12px;
             border: none;
-            border-radius: .5rem;
-            padding: .45rem .75rem;
-            font-size: .8rem;
-            font-weight: 600;
-            cursor: pointer;
-            font-family: inherit;
-            text-decoration: none;
+            padding: 0.7rem 0.8rem;
             text-align: center;
-            transition: background .2s;
+            font-family: inherit;
+            font-weight: 700;
+            text-decoration: none;
+            color: white;
+            background: linear-gradient(135deg, #6366f1, #4f46e5);
+            cursor: pointer;
         }
 
-        .popup-btn:hover { background: #4f46e5; }
-        .popup-btn-secondary { background: #e2e8f0; color: #334155; }
-        .popup-btn-secondary:hover { background: #cbd5e1; }
-
-        /* ── User Dot ─────────────────────────────────────────────── */
-        .user-location-dot {
-            width: 18px; height: 18px;
-            background: #6366f1;
-            border: 3px solid #fff;
-            border-radius: 50%;
-            box-shadow: 0 0 0 4px rgba(99,102,241,.35);
-            animation: pulse 2s infinite;
+        .popup-btn--ghost {
+            background: #0f172a;
+            color: #f8fafc;
         }
 
-        /* ── Hospital Marker Pulse (Best) ─────────────────────────── */
-        .best-hospital-marker { animation: markerPulse 1.8s ease-in-out infinite; }
-
-        @keyframes markerPulse {
-            0%,100% { filter: drop-shadow(0 0 6px #10b981); }
-            50%      { filter: drop-shadow(0 0 18px #10b981); }
+        .leaflet-control-attribution {
+            background: rgba(15, 23, 42, 0.86) !important;
+            color: #cbd5e1 !important;
         }
 
-        /* ── Ambulance ───────────────────────────────────────────── */
-        .ambulance-icon { font-size: 1.3rem; }
+        .leaflet-control-attribution a { color: #93c5fd !important; }
 
-        /* ── Status badge in best panel ───────────────────────────── */
-        .status-available { color: #10b981; font-weight: 700; font-size: .75rem; }
-        .status-limited   { color: #f59e0b; font-weight: 700; font-size: .75rem; }
-        .status-critical  { color: #ef4444; font-weight: 700; font-size: .75rem; }
-
-        /* ── Routing Machine custom overrides ─────────────────────── */
-        .leaflet-routing-container {
-            background: #111827 !important;
-            color: #f1f5f9 !important;
-            border: 1px solid rgba(255,255,255,.1) !important;
-            border-radius: .75rem !important;
-            font-family: 'Outfit', sans-serif !important;
-            font-size: .8rem !important;
-            max-height: 220px !important;
-            overflow-y: auto !important;
+        @media (max-width: 1200px) {
+            .map-page {
+                grid-template-columns: 260px 320px 1fr;
+            }
         }
 
-        .leaflet-routing-alt h2,
-        .leaflet-routing-alt h3 { color: #818cf8 !important; font-size: .85rem !important; }
+        @media (max-width: 1024px) {
+            body { overflow: auto; }
 
-        .leaflet-routing-alt tr { border-bottom: 1px solid rgba(255,255,255,.05) !important; }
+            .map-page {
+                grid-template-columns: 1fr;
+                grid-template-rows: auto auto auto 1fr;
+            }
 
-        /* ── Responsive ───────────────────────────────────────────── */
-        @media (max-width: 900px) {
-            .map-left-panel { display: none; }
-            .sidebar { width: 60px; }
-            .sidebar .brand span,
-            .sidebar-nav a span { display: none; }
-            .sidebar-nav a { justify-content: center; }
-            .sidebar-nav a i { width: auto; margin: 0; }
+            .sidebar {
+                position: fixed;
+                left: -280px;
+                top: 0;
+                width: 280px;
+                transition: left 0.22s ease;
+                z-index: 900;
+            }
+
+            .sidebar.active { left: 0; }
+
+            .sidebar-toggle {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                width: 42px;
+                height: 42px;
+                border-radius: 12px;
+                border: 1px solid rgba(148, 163, 184, 0.16);
+                background: rgba(15, 23, 42, 0.8);
+                color: #f8fafc;
+                cursor: pointer;
+            }
+
+            .map-topbar,
+            .map-left-panel,
+            .map-container {
+                grid-column: 1;
+            }
+
+            .map-topbar {
+                position: relative;
+                padding-top: 0.85rem;
+            }
+
+            .map-left-panel {
+                border-right: none;
+                border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+                height: auto;
+            }
+
+            .panel-list {
+                max-height: 320px;
+            }
+
+            #hospitalMap {
+                height: 62vh;
+                min-height: 440px;
+            }
+
+            .map-container {
+                height: auto;
+            }
+
+            .map-legend {
+                position: static;
+                margin: 1rem;
+            }
         }
     </style>
 </head>
 <body>
-
-<!-- ═══ App Sidebar ════════════════════════════════════════════ -->
-<div class="sidebar">
-    <div class="brand">
-        <i class="fa-solid fa-hospital-user"></i>
-        <span>Exchange.Med</span>
-    </div>
-    <ul class="sidebar-nav">
-        <li><a href="/dashboard"><i class="fa-solid fa-house"></i> <span>Overview</span></a></li>
-        <li><a href="/map" class="active"><i class="fa-solid fa-map-location-dot"></i> <span>Live Map</span></a></li>
-        <li><a href="/marketplace"><i class="fa-solid fa-store"></i> <span>Marketplace</span></a></li>
-        <li><a href="/requests"><i class="fa-solid fa-code-pull-request"></i> <span>Requests</span></a></li>
-        <li><a href="/monitor"><i class="fa-solid fa-chart-line"></i> <span>Monitor</span></a></li>
-        <c:if test="${isAdmin}">
-            <li style="margin-top:1rem">
-                <a href="/admin/dashboard"><i class="fa-solid fa-shield-halved"></i> <span>Admin</span></a>
-            </li>
-        </c:if>
-    </ul>
-    <div class="sidebar-bottom">
-        <form action="/logout" method="POST">
-            <button type="submit" class="sign-out-btn">
-                <i class="fa-solid fa-right-from-bracket"></i> <span>Sign Out</span>
-            </button>
-        </form>
-    </div>
-</div>
-
-<!-- ═══ Map Section ═══════════════════════════════════════════ -->
-<div class="map-wrapper">
-
-    <!-- Sidebar Toggle (Mobile) -->
-    <div class="sidebar-toggle" onclick="document.querySelector('.sidebar').classList.toggle('active')">
-        <i class="fa-solid fa-bars"></i>
+<div class="map-page">
+    <div class="sidebar">
+        <div class="brand">
+            <i class="fa-solid fa-hospital-user"></i>
+            <span>Exchange.Med</span>
+        </div>
+        <ul class="sidebar-nav">
+            <li><a href="/dashboard"><i class="fa-solid fa-house"></i> <span>Overview</span></a></li>
+            <li><a href="/map" class="active"><i class="fa-solid fa-map-location-dot"></i> <span>Live Map</span></a></li>
+            <li><a href="/marketplace"><i class="fa-solid fa-store"></i> <span>Marketplace</span></a></li>
+            <li><a href="/requests"><i class="fa-solid fa-code-pull-request"></i> <span>Requests</span></a></li>
+            <li><a href="/monitor"><i class="fa-solid fa-chart-line"></i> <span>Monitor</span></a></li>
+            <c:if test="${isAdmin}">
+                <li style="margin-top:1rem">
+                    <a href="/admin/dashboard"><i class="fa-solid fa-shield-halved"></i> <span>Admin</span></a>
+                </li>
+            </c:if>
+        </ul>
+        <div class="sidebar-bottom">
+            <form action="/logout" method="POST">
+                <button type="submit" class="sign-out-btn">
+                    <i class="fa-solid fa-right-from-bracket"></i> <span>Sign Out</span>
+                </button>
+            </form>
+        </div>
     </div>
 
-    <!-- Top Bar -->
     <div class="map-topbar">
+        <div class="sidebar-toggle" onclick="document.querySelector('.sidebar').classList.toggle('active')">
+            <i class="fa-solid fa-bars"></i>
+        </div>
         <h2>
             <i class="fa-solid fa-map-location-dot" style="color:#6366f1"></i>
             Hospital Network Map
         </h2>
-
         <div class="live-indicator">
             <div id="liveDot"></div>
             LIVE
         </div>
-
-        <!-- Search -->
         <div class="search-box">
             <i class="fa-solid fa-magnifying-glass"></i>
-            <input type="text" id="hospitalSearch" placeholder="Search hospital or location…">
+            <input type="text" id="hospitalSearch" placeholder="Search hospital or location...">
         </div>
-
-        <!-- Resource Filter -->
         <select id="resourceFilter" class="top-select">
             <option value="ALL">All Resources</option>
-            <option value="ICU_BED">🛏 ICU Beds</option>
-            <option value="VENTILATOR">🌬 Ventilators</option>
-            <option value="AMBULANCE">🚑 Ambulances</option>
-            <option value="SPECIALIST">👨‍⚕️ Specialists</option>
+            <option value="ICU_BED">ICU Beds</option>
+            <option value="VENTILATOR">Ventilators</option>
+            <option value="AMBULANCE">Ambulances</option>
+            <option value="SPECIALIST">Specialists</option>
         </select>
-
-        <!-- Heatmap toggle -->
         <label class="toggle-label">
             <input type="checkbox" id="heatmapToggle">
-            🔥 Heatmap
+            Resource Pressure
         </label>
-
-        <!-- Suggest button -->
-        <button id="suggestBest" class="top-btn">⭐ Suggest Best</button>
-
-        <!-- Clear route -->
-        <button id="clearRoute" class="top-btn top-btn-outline">✕ Clear Route</button>
+        <button id="suggestBest" class="top-btn">Suggest Best</button>
+        <button id="clearRoute" class="top-btn top-btn-outline">Clear Route</button>
     </div>
 
-    <!-- Loading Overlay -->
-    <div id="mapLoading" class="loading-overlay">
-        <div class="spinner"></div>
-        <div class="loading-text">Syncing Hospital Network...</div>
-    </div>
-
-    <!-- Body -->
-    <div class="map-body">
-
-        <!-- Left Panel -->
-        <div class="map-left-panel">
-
-            <!-- Best Hospital -->
-            <div class="panel-section">
-                <h4>Best Hospital Suggestion</h4>
-                <div id="bestHospitalPanel">
-                    <div class="best-hospital-empty">Detecting best match…</div>
-                </div>
-            </div>
-
-            <!-- Routing -->
-            <div class="panel-section">
-                <h4>Get Route</h4>
-                <div class="route-selects">
-                    <select id="srcSelect" class="top-select" style="font-size:.8rem">
-                        <option value="18.5204,73.8567">📍 Pune Centre (default)</option>
-                    </select>
-                    <select id="distSelect" class="top-select" style="font-size:.8rem">
-                        <option value="">Select Destination…</option>
-                    </select>
-                </div>
-                <div id="routeInfo" style="margin-top:.625rem"></div>
-            </div>
-
-            <!-- Hospital List -->
-            <div class="panel-section" style="flex-shrink:0">
-                <h4>Hospitals</h4>
-            </div>
-            <div class="panel-list" id="hospitalList">
-                <div style="color:#64748b;font-size:.85rem;text-align:center;padding:2rem">Loading…</div>
+    <aside class="map-left-panel">
+        <div class="panel-section">
+            <h4>Best Hospital Suggestion</h4>
+            <div id="bestHospitalPanel">
+                <div class="best-hospital-empty">Loading best match...</div>
             </div>
         </div>
 
-        <!-- Map -->
-        <div class="map-container">
-            <div id="hospitalMap"></div>
+        <div class="panel-section">
+            <h4>Route Planner</h4>
+            <div class="route-selects">
+                <select id="srcSelect" class="top-select">
+                    <option value="18.5204,73.8567">Pune centre</option>
+                </select>
+                <select id="distSelect" class="top-select">
+                    <option value="">Select destination…</option>
+                </select>
+            </div>
+            <div id="routeInfo"></div>
+        </div>
 
-            <!-- Legend -->
-            <div class="map-legend">
-                <h5>Legend</h5>
-                <div class="legend-item">
-                    <div class="legend-dot" style="background:#10b981"></div>
-                    Available
-                </div>
-                <div class="legend-item">
-                    <div class="legend-dot" style="background:#f59e0b"></div>
-                    Limited
-                </div>
-                <div class="legend-item">
-                    <div class="legend-dot" style="background:#ef4444"></div>
-                    Critical
-                </div>
-                <div class="legend-item">
-                    <div class="legend-dot" style="background:#6366f1; border-color:#fff"></div>
-                    Your Location
-                </div>
-                <div class="legend-item">
-                    <span style="font-size:1rem">🚑</span>
-                    Ambulance
-                </div>
-                <div class="legend-item">
-                    <div class="legend-line" style="background:#6366f1"></div>
-                    Active Route
-                </div>
+        <div class="panel-section">
+            <h4>Hospitals</h4>
+        </div>
+        <div class="panel-list" id="hospitalList">
+            <div class="panel-empty">Loading hospital map data...</div>
+        </div>
+    </aside>
+
+    <section class="map-container">
+        <div id="mapLoading" class="loading-overlay active">
+            <div class="spinner"></div>
+            <div class="loading-text">Syncing hospital network...</div>
+        </div>
+
+        <div id="hospitalMap"></div>
+
+        <div class="map-legend">
+            <h5>Legend</h5>
+            <div class="legend-item">
+                <div class="legend-dot" style="background:#10b981"></div>
+                Available
+            </div>
+            <div class="legend-item">
+                <div class="legend-dot" style="background:#f59e0b"></div>
+                Limited
+            </div>
+            <div class="legend-item">
+                <div class="legend-dot" style="background:#ef4444"></div>
+                Critical
+            </div>
+            <div class="legend-item">
+                <div class="legend-dot" style="background:#6366f1"></div>
+                Your location
+            </div>
+            <div class="legend-item">
+                <div class="legend-line" style="background:#6366f1"></div>
+                Active route
             </div>
         </div>
-    </div>
+    </section>
 </div>
 
-<!-- ═══ Scripts ═══════════════════════════════════════════════ -->
-<!-- Map logic -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="/js/map.js"></script>
-
 </body>
 </html>

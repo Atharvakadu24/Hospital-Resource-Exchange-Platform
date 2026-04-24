@@ -84,9 +84,7 @@
 
                             <div class="mt-4 pt-3 border-top d-flex justify-content-between align-items-center">
                                 <span class="text-muted small">${booking.resource.type}</span>
-                                <c:if test="${!booking.released}">
-                                    <div class="pulse-small"></div>
-                                </c:if>
+                                <a href="/resources/${booking.resource.id}" class="btn btn-sm btn-outline-light">View</a>
                             </div>
                         </div>
                     </div>

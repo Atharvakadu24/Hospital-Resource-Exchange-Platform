@@ -33,8 +33,12 @@ public class MapController {
     @GetMapping("/map")
     public String mapView(Model model) {
         if (securityUtils.getCurrentUser() == null) return "redirect:/login";
+        boolean googleMapsEnabled = googleMapsApiKey != null
+                && !googleMapsApiKey.isBlank()
+                && !googleMapsApiKey.contains("YOUR_ACTUAL");
         model.addAttribute("isAdmin", securityUtils.isAdmin());
         model.addAttribute("googleMapsApiKey", googleMapsApiKey);
+        model.addAttribute("googleMapsEnabled", googleMapsEnabled);
         return "map";
     }
 

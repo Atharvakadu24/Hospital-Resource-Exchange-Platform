@@ -100,6 +100,11 @@
                                 <div class="mt-3 pt-3 border-top small text-muted d-flex align-items-center gap-2">
                                     <i class="fa-solid fa-hourglass-start opacity-50"></i> Active Transfer
                                 </div>
+                                <c:if test="${isAdmin}">
+                                    <form action="/allocations/release/${booking.id}" method="POST" class="mt-3">
+                                        <button type="submit" class="btn btn-sm btn-outline-warning w-100">Release Resource</button>
+                                    </form>
+                                </c:if>
                             </div>
                         </div>
                     </c:if>

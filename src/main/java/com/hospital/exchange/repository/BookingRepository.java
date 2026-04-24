@@ -8,4 +8,5 @@ import java.util.List;
 public interface BookingRepository extends JpaRepository<Booking, Long> {
     List<Booking> findByReleasedFalseAndReleaseAtBefore(LocalDateTime now);
     List<Booking> findByRequestId(Long requestId);
+    long countByRequestRequesterHospitalIdAndReleasedFalse(Long hospitalId);
 }

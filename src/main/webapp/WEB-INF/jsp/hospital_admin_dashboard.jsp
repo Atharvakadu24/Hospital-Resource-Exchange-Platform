@@ -64,9 +64,9 @@
                     <p class="text-muted">Managing <span class="fw-600 text-dark">${hospital.name}</span></p>
                 </div>
                 <div class="d-flex align-items-center gap-3">
-                    <div class="text-end d-none d-md-block">
-                        <div class="fw-bold small">${user.username}</div>
-                        <div class="text-muted smaller">Resource Manager</div>
+                        <div class="text-end d-none d-md-block">
+                            <div class="fw-bold small">${user.username}</div>
+                            <div class="text-muted smaller">Resource Manager</div>
                     </div>
                     <form action="/logout" method="POST" class="m-0">
                         <button type="submit" class="btn btn-outline-saas btn-sm">
@@ -152,7 +152,16 @@
                             <span class="fw-bold">${hospital.resourceQuota}</span>
                         </div>
                         <div class="progress" style="height: 6px;">
-                            <div class="progress-bar bg-primary" style="width: 45%;"></div>
+                            <div class="progress-bar bg-primary" style="width: ${currentQuotaLoad}%;"></div>
+                        </div>
+                        <div class="small text-muted mt-2">${currentQuotaLoad}% of quota currently engaged</div>
+                    </div>
+
+                    <div class="card-saas mt-4">
+                        <h6 class="fw-bold mb-3"><i class="fa-solid fa-wave-square me-2 text-primary"></i> Request Activity</h6>
+                        <div class="d-flex justify-content-between small">
+                            <span class="text-muted">Open requests</span>
+                            <span class="fw-bold">${pendingRequests}</span>
                         </div>
                     </div>
                 </div>

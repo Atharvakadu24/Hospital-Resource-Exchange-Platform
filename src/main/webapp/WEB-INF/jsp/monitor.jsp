@@ -1,5 +1,6 @@
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
 <%@ taglib prefix="c" uri="jakarta.tags.core" %>
+<%@ taglib prefix="fn" uri="jakarta.tags.functions" %>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -101,7 +102,7 @@
                     <div class="card-saas h-100">
                         <div class="d-flex justify-content-between align-items-center mb-4">
                             <h5 class="fw-bold mb-0">Priority Allocation Queue</h5>
-                            <span class="badge bg-primary-light">${waitingRequests.size()} hospitals waiting</span>
+                            <span class="badge bg-primary-light">${fn:length(waitingRequests)} hospitals waiting</span>
                         </div>
 
                         <div class="queue-container p-3">

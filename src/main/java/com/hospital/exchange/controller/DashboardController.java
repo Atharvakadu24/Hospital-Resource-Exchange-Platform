@@ -3,10 +3,13 @@ package com.hospital.exchange.controller;
 import com.hospital.exchange.service.HospitalService;
 import com.hospital.exchange.service.ResourceAllocationService;
 import com.hospital.exchange.service.ResourceService;
+import com.hospital.exchange.entity.Resource;
 import com.hospital.exchange.util.SecurityUtils;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
+
+import java.util.List;
 
 @Controller
 public class DashboardController {
@@ -40,10 +43,16 @@ public class DashboardController {
     @GetMapping("/dashboard")
     public String mainDashboard(Model model) {
         if (securityUtils.getCurrentUser() == null) return "redirect:/login";
+        if (securityUtils.isAdmin()) return "redirect:/admin/dashboard";
+        if (securityUtils.isHospitalAdmin()) return "redirect:/hospital-admin/dashboard";
 
+        List<Resource> resources = resourceService.getAllResources();
         model.addAttribute("user", securityUtils.getCurrentUser());
         model.addAttribute("recentRequests", allocationService.getAllRequests());
-        model.addAttribute("allResources", resourceService.getAllResources());
+        model.addAttribute("resources", resources);
+        model.addAttribute("hospitals", hospitalService.getAllHospitals());
+        model.addAttribute("availableResources", resources.stream().filter(r -> r.getStatus() == Resource.ResourceStatus.AVAILABLE).count());
+        model.addAttribute("activeAllocations", resources.stream().filter(r -> r.getStatus() != Resource.ResourceStatus.AVAILABLE).count());
         model.addAttribute("isAdmin", securityUtils.isAdmin());
         
         return "dashboard";

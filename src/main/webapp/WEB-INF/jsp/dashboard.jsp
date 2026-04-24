@@ -1,5 +1,6 @@
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
 <%@ taglib prefix="c" uri="jakarta.tags.core" %>
+<%@ taglib prefix="fn" uri="jakarta.tags.functions" %>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -92,7 +93,7 @@
                             </div>
                             <div>
                                 <div class="text-muted small">Total Hospitals</div>
-                                <div class="fs-4 fw-bold">12</div>
+                                <div class="fs-4 fw-bold">${fn:length(hospitals)}</div>
                             </div>
                         </div>
                     </div>
@@ -105,7 +106,7 @@
                             </div>
                             <div>
                                 <div class="text-muted small">Resources</div>
-                                <div class="h4 fw-bold mb-0">${resources.size()}</div>
+                                <div class="h4 fw-bold mb-0">${fn:length(resources)}</div>
                             </div>
                         </div>
                     </div>
@@ -118,13 +119,7 @@
                             </div>
                             <div>
                                 <div class="text-muted small">Available</div>
-                                <div class="h4 fw-bold mb-0">
-                                    <c:set var="avail" value="0"/>
-                                    <c:forEach items="${resources}" var="r">
-                                        <c:if test="${r.status == 'AVAILABLE'}"><c:set var="avail" value="${avail + 1}"/></c:if>
-                                    </c:forEach>
-                                    ${avail}
-                                </div>
+                                <div class="h4 fw-bold mb-0">${availableResources}</div>
                             </div>
                         </div>
                     </div>
@@ -137,7 +132,7 @@
                             </div>
                             <div>
                                 <div class="text-muted small">Uptime</div>
-                                <div class="h4 fw-bold mb-0">99.9%</div>
+                                <div class="h4 fw-bold mb-0">${activeAllocations}</div>
                             </div>
                         </div>
                     </div>
@@ -172,25 +167,64 @@
                                     <td>
                                         <div class="d-flex align-items-center gap-2">
                                             <div class="progress flex-grow-1" style="height: 6px;">
-                                                <c:set var="load" value="0"/>
-                                                <c:forEach items="${h.resources}" var="r">
-                                                    <c:if test="${r.status != 'AVAILABLE'}"><c:set var="load" value="${load + 1}"/></c:if>
-                                                </c:forEach>
-                                                <div class="progress-bar bg-primary" style="width: ${(load / h.resourceQuota) * 100}%"></div>
+                                                <div class="progress-bar bg-primary" style="width: ${hospitalLoads[h.id]}%"></div>
                                             </div>
-                                            <span class="small fw-bold">${load}/${h.resourceQuota}</span>
+                                            <span class="small fw-bold">${hospitalLoads[h.id]}% / ${h.resourceQuota}</span>
                                         </div>
                                     </td>
                                     <td class="text-end">
-                                        <a href="/hospital/${h.id}" class="btn btn-sm btn-saas">
-                                            Manage <i class="fa-solid fa-chevron-right ms-1 small"></i>
-                                        </a>
+                                        <div class="d-flex justify-content-end gap-2">
+                                            <a href="/hospital/${h.id}" class="btn btn-sm btn-saas">
+                                                Manage <i class="fa-solid fa-chevron-right ms-1 small"></i>
+                                            </a>
+                                            <form action="/admin/hospitals/delete/${h.id}" method="POST" class="m-0">
+                                                <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+                                            </form>
+                                        </div>
                                     </td>
                                 </tr>
                             </c:forEach>
                         </tbody>
                     </table>
                 </div>
+            </div>
+
+            <div class="card-saas mt-4">
+                <h5 class="fw-bold mb-4">Add Hospital</h5>
+                <form action="/admin/hospitals" method="POST">
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <input type="text" name="name" class="form-control" placeholder="Hospital name" required>
+                        </div>
+                        <div class="col-md-4">
+                            <input type="text" name="location" class="form-control" placeholder="Location" required>
+                        </div>
+                        <div class="col-md-4">
+                            <input type="number" name="resourceQuota" class="form-control" placeholder="Quota" min="1" required>
+                        </div>
+                        <div class="col-md-4">
+                            <input type="text" name="contactNumber" class="form-control" placeholder="Contact number" required>
+                        </div>
+                        <div class="col-md-4">
+                            <input type="email" name="contactEmail" class="form-control" placeholder="Contact email" required>
+                        </div>
+                        <div class="col-md-2">
+                            <input type="number" step="0.000001" name="latitude" class="form-control" placeholder="Latitude" required>
+                        </div>
+                        <div class="col-md-2">
+                            <input type="number" step="0.000001" name="longitude" class="form-control" placeholder="Longitude" required>
+                        </div>
+                        <div class="col-md-3">
+                            <input type="text" name="adminUsername" class="form-control" placeholder="Hospital admin username">
+                        </div>
+                        <div class="col-md-3">
+                            <input type="text" name="adminPassword" class="form-control" placeholder="Hospital admin password">
+                        </div>
+                        <div class="col-md-3">
+                            <button type="submit" class="btn btn-saas w-100">Create Hospital</button>
+                        </div>
+                    </div>
+                </form>
             </div>
         </div>
     </div>

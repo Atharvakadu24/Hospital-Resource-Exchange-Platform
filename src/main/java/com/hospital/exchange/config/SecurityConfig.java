@@ -32,7 +32,7 @@ public class SecurityConfig {
         http
             .csrf(csrf -> csrf.disable()) // Disable for development simplicity
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/", "/login", "/hospital/**", "/css/**", "/js/**", "/WEB-INF/jsp/**").permitAll()
+                .requestMatchers("/", "/login", "/hospital/**", "/css/**", "/js/**", "/WEB-INF/jsp/**", "/error/**").permitAll()
                 .requestMatchers("/api/map/**").permitAll()
                 .requestMatchers("/admin/**").hasAuthority("ADMIN")
                 .requestMatchers("/hospital-admin/**").hasAuthority("HOSPITAL_ADMIN")

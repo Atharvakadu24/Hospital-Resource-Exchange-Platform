@@ -4,6 +4,8 @@ import com.hospital.exchange.dto.HospitalResourceSummaryDTO;
 import com.hospital.exchange.entity.AuditLog;
 import com.hospital.exchange.entity.Hospital;
 import com.hospital.exchange.entity.Resource;
+import com.hospital.exchange.exception.ForbiddenOperationException;
+import com.hospital.exchange.exception.ResourceNotFoundException;
 import com.hospital.exchange.repository.AuditLogRepository;
 import com.hospital.exchange.repository.ResourceRepository;
 import org.springframework.stereotype.Service;
@@ -33,7 +35,7 @@ public class ResourceService {
     }
 
     public Resource getResourceById(Long id) {
-        return resourceRepository.findById(id).orElseThrow(() -> new RuntimeException("Resource not found"));
+        return resourceRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Resource " + id + " was not found."));
     }
 
     @Transactional
@@ -58,7 +60,7 @@ public class ResourceService {
     public void deleteResource(Long id) {
         Resource resource = getResourceById(id);
         if (resource.getStatus() != Resource.ResourceStatus.AVAILABLE) {
-            throw new RuntimeException("Cannot delete a resource that is currently " + resource.getStatus());
+            throw new ForbiddenOperationException("Cannot delete a resource that is currently " + resource.getStatus() + ".");
         }
         resourceRepository.delete(resource);
         logAudit("RESOURCE_DELETED", "Deleted resource " + resource.getResourceName(), "System", resource.getHospital());

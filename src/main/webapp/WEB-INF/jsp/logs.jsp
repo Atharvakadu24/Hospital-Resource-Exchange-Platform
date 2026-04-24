@@ -1,5 +1,6 @@
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
 <%@ taglib prefix="c" uri="jakarta.tags.core" %>
+<%@ taglib prefix="fn" uri="jakarta.tags.functions" %>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -91,7 +92,7 @@
                                 <tr class="animate-fade">
                                     <td class="text-muted small" style="font-family: monospace;">${log.timestamp}</td>
                                     <td>
-                                        <span class="badge ${log.action.contains('REJECT') || log.action.contains('DEADLOCK') ? 'bg-danger-light text-danger' : log.action.contains('ALLOCATED') ? 'bg-success-light text-success' : 'bg-primary-light text-primary'} border-0">
+                                        <span class="badge ${fn:contains(log.action, 'REJECT') or fn:contains(log.action, 'DEADLOCK') ? 'bg-danger-light text-danger' : fn:contains(log.action, 'ALLOCATED') ? 'bg-success-light text-success' : 'bg-primary-light text-primary'} border-0">
                                             ${log.action}
                                         </span>
                                     </td>

@@ -1,11 +1,12 @@
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
 <%@ taglib prefix="c" uri="jakarta.tags.core" %>
+<%@ taglib prefix="fn" uri="jakarta.tags.functions" %>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>${hospital.name} - System Admin</title>
+    <title>${hospital.name} - Exchange.Med</title>
     
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" rel="stylesheet">
@@ -27,12 +28,9 @@
         </div>
         <ul class="sidebar-nav">
             <li class="nav-item">
-                <a href="/admin/dashboard" class="nav-link">
-                    <i class="fa-solid fa-shield-halved"></i> Global Control
+                <a href="/dashboard" class="nav-link">
+                    <i class="fa-solid fa-house"></i> Overview
                 </a>
-            </li>
-            <li class="nav-item mt-4">
-                <div class="px-4 text-uppercase fw-bold text-muted" style="font-size: 0.7rem;">Navigation</div>
             </li>
             <li class="nav-item">
                 <a href="/marketplace" class="nav-link">
@@ -45,10 +43,20 @@
                 </a>
             </li>
             <li class="nav-item">
-                <a href="/admin/logs" class="nav-link">
-                    <i class="fa-solid fa-clock-rotate-left"></i> Audit Logs
+                <a href="/requests" class="nav-link">
+                    <i class="fa-solid fa-code-pull-request"></i> Requests
                 </a>
             </li>
+            <c:if test="${isAdmin}">
+                <li class="nav-item mt-4">
+                    <div class="px-4 text-uppercase fw-bold text-muted" style="font-size: 0.7rem;">Administration</div>
+                </li>
+                <li class="nav-item">
+                    <a href="/admin/logs" class="nav-link">
+                        <i class="fa-solid fa-clock-rotate-left"></i> Audit Logs
+                    </a>
+                </li>
+            </c:if>
         </ul>
         
         <div class="position-absolute bottom-0 w-100 p-3">
@@ -66,7 +74,7 @@
             <!-- Header -->
             <div class="mb-5">
                 <div class="d-flex align-items-center gap-3 mb-2">
-                    <a href="/admin/dashboard" class="text-muted text-decoration-none small">
+                    <a href="/dashboard" class="text-muted text-decoration-none small">
                         <i class="fa-solid fa-arrow-left me-1"></i> Back to Network
                     </a>
                 </div>
@@ -91,7 +99,7 @@
                     <div class="card-saas h-100">
                         <div class="d-flex justify-content-between align-items-center mb-4">
                             <h5 class="fw-bold mb-0">Managed Resources</h5>
-                            <span class="badge bg-light text-primary border">${resources.size()} items</span>
+                            <span class="badge bg-light text-primary border">${fn:length(resources)} items</span>
                         </div>
                         <div class="table-responsive">
                             <table class="table table-hover align-middle">
@@ -100,6 +108,7 @@
                                         <th>Resource Name</th>
                                         <th>Type</th>
                                         <th>Status</th>
+                                        <th class="text-end">Action</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -108,61 +117,75 @@
                                             <td><div class="fw-bold">${res.resourceName}</div></td>
                                             <td><span class="badge bg-light text-muted border-0">${res.type}</span></td>
                                             <td>
-                                                <span class="badge-saas badge-${res.status.toLowerCase().replace('_', '')}">
-                                                    ${res.status}
-                                                </span>
+                                                <c:choose>
+                                                    <c:when test="${res.status == 'AVAILABLE'}">
+                                                        <span class="badge-saas badge-available">${res.status}</span>
+                                                    </c:when>
+                                                    <c:when test="${res.status == 'RESERVED'}">
+                                                        <span class="badge-saas badge-reserved">${res.status}</span>
+                                                    </c:when>
+                                                    <c:otherwise>
+                                                        <span class="badge-saas badge-inuse">${res.status}</span>
+                                                    </c:otherwise>
+                                                </c:choose>
+                                            </td>
+                                            <td class="text-end">
+                                                <c:choose>
+                                                    <c:when test="${isHospitalAdmin and currentHospitalId != null and currentHospitalId != hospital.id and res.status == 'AVAILABLE'}">
+                                                        <a href="/requests/new?resourceId=${res.id}" class="btn btn-sm btn-saas">Request</a>
+                                                    </c:when>
+                                                    <c:otherwise>
+                                                        <a href="/resources/${res.id}" class="btn btn-sm btn-outline-light">View</a>
+                                                    </c:otherwise>
+                                                </c:choose>
                                             </td>
                                         </tr>
                                     </c:forEach>
+                                    <c:if test="${empty resources}">
+                                        <tr>
+                                            <td colspan="4" class="text-center py-5 text-muted">No resources are registered for this hospital.</td>
+                                        </tr>
+                                    </c:if>
                                 </tbody>
                             </table>
                         </div>
                     </div>
                 </div>
 
-                <!-- Request Form -->
+                <!-- Summary -->
                 <div class="col-lg-4">
                     <div class="card-saas">
-                        <h5 class="fw-bold mb-4">Request Resource</h5>
-                        <form action="/resources/request" method="POST">
-                            <input type="hidden" name="hospitalId" value="${hospital.id}">
-                            
-                            <div class="mb-3">
-                                <label class="form-label text-muted small fw-bold">Resource Type</label>
-                                <select name="type" class="form-control-saas">
-                                    <option value="ICU_BED">ICU Bed</option>
-                                    <option value="VENTILATOR">Ventilator</option>
-                                    <option value="AMBULANCE">Ambulance</option>
-                                    <option value="SPECIALIST">Specialist</option>
-                                </select>
-                            </div>
+                        <h5 class="fw-bold mb-4">Hospital Snapshot</h5>
+                        <div class="d-flex justify-content-between small mb-2">
+                            <span class="text-muted">Contact Number</span>
+                            <span class="fw-bold">${hospital.contactNumber}</span>
+                        </div>
+                        <div class="d-flex justify-content-between small mb-2">
+                            <span class="text-muted">Contact Email</span>
+                            <span class="fw-bold">${hospital.contactEmail}</span>
+                        </div>
+                        <div class="d-flex justify-content-between small mb-2">
+                            <span class="text-muted">Available Resources</span>
+                            <span class="fw-bold">${summary.totalAvail}/${summary.totalAll}</span>
+                        </div>
+                        <div class="d-flex justify-content-between small mb-4">
+                            <span class="text-muted">Network Status</span>
+                            <span class="fw-bold">${summary.status}</span>
+                        </div>
 
-                            <div class="mb-3">
-                                <label class="form-label text-muted small fw-bold">Priority Level</label>
-                                <select name="priority" class="form-control-saas">
-                                    <option value="NORMAL">Normal</option>
-                                    <option value="HIGH">High</option>
-                                    <option value="EMERGENCY">Emergency (Critical)</option>
-                                </select>
-                            </div>
-
-                            <div class="mb-3">
-                                <label class="form-label text-muted small fw-bold">Start Time</label>
-                                <input type="datetime-local" name="startTime" class="form-control-saas" required>
-                            </div>
-
-                            <div class="mb-4">
-                                <label class="form-label text-muted small fw-bold">End Time</label>
-                                <input type="datetime-local" name="endTime" class="form-control-saas" required>
-                            </div>
-
-                            <button type="submit" class="btn-saas w-100">
-                                <i class="fa-solid fa-paper-plane me-2"></i> Submit Request
-                            </button>
-                        </form>
                         <div class="mt-4 p-3 bg-light rounded-3 text-muted small">
                             <i class="fa-solid fa-circle-info me-2 text-primary"></i>
-                            Allocations are processed using deadlock-prevention algorithms.
+                            <c:choose>
+                                <c:when test="${isHospitalAdmin and currentHospitalId != hospital.id}">
+                                    Open any available resource from this hospital to create a request instantly.
+                                </c:when>
+                                <c:when test="${isHospitalAdmin and currentHospitalId == hospital.id}">
+                                    This is your own hospital profile. Requests are available only for other hospitals' resources.
+                                </c:when>
+                                <c:otherwise>
+                                    Review live inventory, quota, and contact details for this hospital.
+                                </c:otherwise>
+                            </c:choose>
                         </div>
                     </div>
                 </div>

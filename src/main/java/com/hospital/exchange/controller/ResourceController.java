@@ -1,6 +1,7 @@
 package com.hospital.exchange.controller;
 
 import com.hospital.exchange.entity.Resource;
+import com.hospital.exchange.exception.ForbiddenOperationException;
 import com.hospital.exchange.service.ResourceService;
 import com.hospital.exchange.util.SecurityUtils;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -27,9 +28,17 @@ public class ResourceController {
         this.securityUtils = securityUtils;
     }
 
+    @GetMapping({"", "/"})
+    public String listResources(Model model) {
+        return marketplace(model);
+    }
+
     @GetMapping("/marketplace")
     public String marketplace(Model model) {
         model.addAttribute("allResources", resourceService.getAllResources());
+        model.addAttribute("isAdmin", securityUtils.isAdmin());
+        model.addAttribute("isHospitalAdmin", securityUtils.isHospitalAdmin());
+        model.addAttribute("currentHospitalId", securityUtils.getCurrentHospital() != null ? securityUtils.getCurrentHospital().getId() : null);
         return "marketplace";
     }
 
@@ -39,20 +48,26 @@ public class ResourceController {
         return "resource_detail";
     }
 
+    @GetMapping("/edit/{id}")
+    @PreAuthorize("hasAnyAuthority('ADMIN', 'HOSPITAL_ADMIN')")
+    public String editResource(@PathVariable Long id, Model model) {
+        Resource resource = resourceService.getResourceById(id);
+        verifyOwnership(resource);
+        populateResourceForm(model, resource);
+        return "resource_edit";
+    }
+
     @PostMapping("/update/{id}")
     @PreAuthorize("hasAnyAuthority('ADMIN', 'HOSPITAL_ADMIN')")
-    public String updateResource(@PathVariable Long id, @Valid @ModelAttribute Resource resource, BindingResult result) {
+    public String updateResource(@PathVariable Long id, @Valid @ModelAttribute("resource") Resource resource, BindingResult result,
+                                 Model model) {
         if (result.hasErrors()) {
+            populateResourceForm(model, resource);
             return "resource_edit";
         }
         
-        // Ownership check for HOSPITAL_ADMIN
-        if (securityUtils.isHospitalAdmin()) {
-            Resource existing = resourceService.getResourceById(id);
-            if (!existing.getHospital().getId().equals(securityUtils.getCurrentHospital().getId())) {
-                return "redirect:/error/403";
-            }
-        }
+        Resource existing = resourceService.getResourceById(id);
+        verifyOwnership(existing);
         
         resourceService.updateResource(id, resource);
         return "redirect:/resources/" + id;
@@ -61,16 +76,11 @@ public class ResourceController {
     @PostMapping("/delete/{id}")
     @PreAuthorize("hasAnyAuthority('ADMIN', 'HOSPITAL_ADMIN')")
     public String deleteResource(@PathVariable Long id) {
-        // Ownership check for HOSPITAL_ADMIN
-        if (securityUtils.isHospitalAdmin()) {
-            Resource existing = resourceService.getResourceById(id);
-            if (!existing.getHospital().getId().equals(securityUtils.getCurrentHospital().getId())) {
-                return "redirect:/error/403";
-            }
-        }
+        Resource existing = resourceService.getResourceById(id);
+        verifyOwnership(existing);
         
         resourceService.deleteResource(id);
-        return "redirect:/resources";
+        return "redirect:/marketplace";
     }
 
     /**
@@ -81,5 +91,18 @@ public class ResourceController {
     @ResponseBody
     public String getResourceStatus(@PathVariable Long id) {
         return resourceService.getResourceById(id).getStatus().name();
+    }
+
+    private void verifyOwnership(Resource resource) {
+        if (securityUtils.isHospitalAdmin() &&
+                !resource.getHospital().getId().equals(securityUtils.getCurrentHospital().getId())) {
+            throw new ForbiddenOperationException("You can manage only your hospital's resources.");
+        }
+    }
+
+    private void populateResourceForm(Model model, Resource resource) {
+        model.addAttribute("resource", resource);
+        model.addAttribute("resourceTypes", com.hospital.exchange.model.ResourceType.values());
+        model.addAttribute("resourceStatuses", Resource.ResourceStatus.values());
     }
 }

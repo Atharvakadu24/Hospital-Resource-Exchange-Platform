@@ -2,6 +2,8 @@ package com.hospital.exchange.controller;
 
 import com.hospital.exchange.entity.AllocationRequest;
 import com.hospital.exchange.entity.Hospital;
+import com.hospital.exchange.entity.Resource;
+import com.hospital.exchange.exception.ForbiddenOperationException;
 import com.hospital.exchange.service.HospitalService;
 import com.hospital.exchange.service.ResourceService;
 import com.hospital.exchange.service.ResourceAllocationService;
@@ -43,26 +45,66 @@ public class RequestController {
             Hospital current = securityUtils.getCurrentHospital();
             model.addAttribute("requests", allocationService.getRequestsByHospital(current.getId()));
         }
+        model.addAttribute("isAdmin", securityUtils.isAdmin());
+        model.addAttribute("currentHospitalId", securityUtils.getCurrentHospital() != null ? securityUtils.getCurrentHospital().getId() : null);
         return "request_list";
     }
 
     @GetMapping("/new")
-    @PreAuthorize("hasAuthority('HOSPITAL_ADMIN')")
+    @PreAuthorize("hasAnyAuthority('ADMIN', 'HOSPITAL_ADMIN')")
     public String showRequestPanel(@RequestParam Long resourceId, Model model) {
-        Hospital current = securityUtils.getCurrentHospital();
-        model.addAttribute("targetResource", resourceService.getResourceById(resourceId));
-        model.addAttribute("currentQuotaLoad", allocationService.getQuotaLoadPercent(current));
+        Resource targetResource = resourceService.getResourceById(resourceId);
+        Hospital requesterHospital = resolveRequesterHospital(null);
+        if (requesterHospital != null && targetResource.getHospital().getId().equals(requesterHospital.getId())) {
+            throw new ForbiddenOperationException("Your hospital cannot request its own resource.");
+        }
+
+        model.addAttribute("targetResource", targetResource);
+        model.addAttribute("currentQuotaLoad", requesterHospital != null ? allocationService.getQuotaLoadPercent(requesterHospital) : 0);
+        model.addAttribute("requesterHospital", requesterHospital);
+        model.addAttribute("requesterHospitals", hospitalService.getAllHospitals());
+        model.addAttribute("isAdmin", securityUtils.isAdmin());
         return "request_panel";
     }
 
     @PostMapping("/new")
-    @PreAuthorize("hasAuthority('HOSPITAL_ADMIN')")
-    public String createRequest(@ModelAttribute AllocationRequest request, @RequestParam Long resourceId) {
-        Hospital current = securityUtils.getCurrentHospital();
+    @PreAuthorize("hasAnyAuthority('ADMIN', 'HOSPITAL_ADMIN')")
+    public String createRequest(@ModelAttribute AllocationRequest request, @RequestParam Long resourceId,
+                                @RequestParam(required = false) Integer durationHours,
+                                @RequestParam(required = false) Long requesterHospitalId) {
+        Hospital requesterHospital = resolveRequesterHospital(requesterHospitalId);
+        Resource targetResource = resourceService.getResourceById(resourceId);
+        if (requesterHospital == null) {
+            return "redirect:/login";
+        }
+        if (targetResource.getHospital().getId().equals(requesterHospital.getId())) {
+            throw new ForbiddenOperationException("Your hospital cannot request its own resource.");
+        }
+
+        if (request.getStartTime() == null) {
+            throw new IllegalArgumentException("Start time is required.");
+        }
+        if (request.getEndTime() == null && durationHours != null && durationHours > 0) {
+            request.setEndTime(request.getStartTime().plusHours(durationHours));
+        }
+        if (request.getEndTime() == null || !request.getEndTime().isAfter(request.getStartTime())) {
+            throw new IllegalArgumentException("End time must be after start time.");
+        }
+
         // Logical connection: Resource type is implicitly derived from targetResource
-        allocationService.createRequest(current, resourceService.getResourceById(resourceId).getType(), 
+        allocationService.createRequest(requesterHospital, targetResource.getType(),
                                       request.getPriority(), request.getStartTime(), request.getEndTime());
         return "redirect:/requests";
+    }
+
+    private Hospital resolveRequesterHospital(Long requesterHospitalId) {
+        if (securityUtils.isAdmin()) {
+            if (requesterHospitalId == null) {
+                return null;
+            }
+            return hospitalService.getHospitalById(requesterHospitalId);
+        }
+        return securityUtils.getCurrentHospital();
     }
 
     @PostMapping("/cancel/{id}")
@@ -70,13 +112,20 @@ public class RequestController {
     public String cancelRequest(@PathVariable Long id) {
         // Ownership check for HOSPITAL_ADMIN
         if (securityUtils.isHospitalAdmin()) {
-            AllocationRequest request = allocationService.getRequestById(id); // Need to add this to service
+            AllocationRequest request = allocationService.getRequestById(id);
             if (request == null || !request.getRequesterHospital().getId().equals(securityUtils.getCurrentHospital().getId())) {
-                return "redirect:/error/403";
+                throw new ForbiddenOperationException("You can cancel only your hospital's own requests.");
             }
         }
         
         allocationService.cancelRequest(id);
+        return "redirect:/requests";
+    }
+
+    @PostMapping("/allocate/{id}")
+    @PreAuthorize("hasAuthority('ADMIN')")
+    public String allocateRequest(@PathVariable Long id) {
+        allocationService.allocateRequest(id);
         return "redirect:/requests";
     }
 }
